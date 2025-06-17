@@ -3,9 +3,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 from collections import defaultdict
 
-
-name_of_paper_xml = "paper1.xml"
-tree = ET.parse(name_of_paper_xml)
+tree = ET.parse("name_of_paper.xml")
 root = tree.getroot()
 
 code_to_name = {}
