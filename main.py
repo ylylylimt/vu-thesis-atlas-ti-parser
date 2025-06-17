@@ -16,7 +16,7 @@ for c in root.findall("./codes/code"):
     raw  = c.attrib["name"]
     m    = re.search(r"\s*\(T(\d+)\)\s*$", raw)
     if m:
-        # strip off the " (Tn)"
+       
         tn = m.group(1)
         name_stripped = raw[:m.start()].strip()
         code_to_name[cid] = name_stripped
@@ -24,7 +24,6 @@ for c in root.findall("./codes/code"):
     else:
         code_to_name[cid] = raw
 
-# 3. Extract all quotations, record text, order, and (ATn) if it’s a title
 quotes = []
 for idx, q in enumerate(root.findall(".//primDoc//quotations/q")):
     qid    = q.attrib["id"]
@@ -34,7 +33,6 @@ for idx, q in enumerate(root.findall(".//primDoc//quotations/q")):
     quotes.append({"qid": qid, "text": text, "order": idx, "tactic": at_num})
 quotes_by_id = {q["qid"]: q for q in quotes}
 
-# Titles for fallback
 title_quotes = sorted([q for q in quotes if q["tactic"]], key=lambda q: q["order"])
 def find_tactic_for(qid):
     order = quotes_by_id[qid]["order"]
@@ -43,7 +41,6 @@ def find_tactic_for(qid):
             return tq["tactic"]
     return None
 
-# 4. Pull in families
 families = {
     cf.attrib["id"]: (
         cf.attrib["name"],
@@ -52,32 +49,29 @@ families = {
     for cf in root.findall("./families/codeFamilies/codeFamily")
 }
 
-# 5. Read coding links and assign each code→tactic
 tactic_codes = defaultdict(set)
 for link in root.findall("./links/objectSegmentLinks/codings/iLink"):
     cid, qid = link.attrib["obj"], link.attrib["qRef"]
-    # primary: override if code name had "(Tn)"
+
     if cid in code_to_tactic_override:
         tac = code_to_tactic_override[cid]
     else:
-        # fallback: nearest preceding ATn quotation
+
         tac = find_tactic_for(qid)
     if tac:
         tactic_codes[tac].add(cid)
 
-# 6. Build output rows: one tactic → { familyName: [codeNames], ... }
 output = {}
 for tac, cids in tactic_codes.items():
     row = {}
     for fam_id, (fam_name, fam_code_ids) in families.items():
         hits = sorted(cids & set(fam_code_ids))
         row[fam_name] = "; ".join(code_to_name[c] for c in hits) if hits else ""
-    # grab the title paragraph
+  
     title_q = next(q for q in title_quotes if q["tactic"] == tac)
     row["Paragraph"] = title_q["text"]
     output[tac] = row
 
-# 7. DataFrame, reorder columns
 df = pd.DataFrame.from_dict(output, orient="index")
 df.index.name = "Tactic"
 
@@ -96,7 +90,6 @@ cols = [
 ]
 df = df.reindex(columns=cols)
 
-# 8. Write nicely to Excel
 output_path = "output.xlsx"
 with pd.ExcelWriter(output_path, engine="xlsxwriter") as writer:
     df.to_excel(writer, sheet_name="Tactics", startrow=1, header=False)
